@@ -73,7 +73,9 @@ export class Compiler {
     }
     if (args.kind === 'import-statement') {
       const dirname = Path.dirname(args.importer)
+      console.log('dirname', dirname);
       const path = Path.join(dirname, args.path)
+      console.log('path', path);
       return { path }
     }
     throw Error('not resolvable')

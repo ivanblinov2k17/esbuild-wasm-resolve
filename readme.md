@@ -7,6 +7,8 @@ $ npm install
 $ npm start
 ```
 
+The same approach work if files initially stored on a webserver (resolving through URL)
+
 Seems like may be dependant on a esbuild-wasm build version (was unable to run in vite app with newer version)
 Tried also starting a local server for vite react+devextreme project to bundle main or index, but failed due to module resolution (src/app.tsx)
 A good start for spike, but probably will need a significant additional effort for our usecase

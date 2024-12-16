@@ -81,6 +81,10 @@ export class Compiler {
       return await response.json();
     };
 
+    if (dirname.includes('esm/inferno/index')){
+      console.log('SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS')
+    }
+
     if (dirname.includes('devextreme') && args.path.includes('./')){
       return {path: Path.join(dirname, args.path + '.js')}
     }

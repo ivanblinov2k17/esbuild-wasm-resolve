@@ -53,6 +53,10 @@ const url = 'http://127.0.0.1:3146'
 export class ServerResolver implements Resolver {
   constructor() {}
   public resolve(path: string) {
+    // Bug, fix later
+    // if (path === '/node_modules/@devextreme/runtime/esm/inferno/index') {
+    //   return fetch(url + path + '.js').then(res => res.text())
+    // }
     return fetch(url + path).then(res => res.text())
   }
 }

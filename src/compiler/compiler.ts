@@ -47,6 +47,7 @@ export class Compiler {
 
   public async compile(entryPoint: string, options: esbuild.BuildOptions = {}) {
     await this.barrier.wait()
+    console.log('entry', entryPoint)
     const result = await esbuild.build({
       entryPoints: [entryPoint.charAt(0) === '/' ? entryPoint.slice(1) : entryPoint],
       plugins: [
@@ -67,14 +68,97 @@ export class Compiler {
     return this.decoder.decode(contents)
   }
 
-  private onResolveCallback(args: esbuild.OnResolveArgs) {
+  private async onResolveCallback(args: esbuild.OnResolveArgs) {
     if (args.kind === 'entry-point') {
       return { path: '/' + args.path }
     }
-    if (args.kind === 'import-statement') {
-      const dirname = Path.dirname(args.importer)
+
+    const fetchPackageJson = async (url: string): Promise<any> => {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Failed to fetch ${url}`);
+      return await response.json();
+    };
+    
+    if (!args.path.includes('App.jsx') && !args.path.includes('main.jsx') && args.kind === 'import-statement') {
+      const baseUrl = 'http://127.0.0.1:3146/node_modules';
+      const pkgUrl = `${baseUrl}/${args.path}/package.json`;
+      console.log('asdasd', pkgUrl)
+
+      try {
+        const pkg = await fetchPackageJson(pkgUrl);
+        
+        // Determine the entry point
+        let entryPoint = pkg.exports?.import || pkg.module || pkg.main || 'index.js';
+        const entryUrl = `${baseUrl}/${args.path}/${entryPoint}`;
+        
+        return { path: entryUrl, namespace: 'http' };
+      } catch (error) {
+        console.error(`Error resolving ${args.path}:`, error);
+    }
+  }
+    
+    // const importLike = args.kind === 'import-statement' || args.kind === 'require-call';
+
+    // if (args.path === 'react' && importLike){
+    //   const path = Path.join('/node_modules/', args.path, 'index.js');
+    //   console.log('path', path);
+    //   return { path }
+    // }
+
+    // if (args.path.includes('devextreme-react') && importLike) {
+    //   const path = Path.join('/node_modules/', args.path.replace('devextreme-react', 'devextreme-react/esm') + '.js')
+    //   console.log('path', path);
+    //   return { path }
+    // }
+
+    // if (args.path.includes('devextreme/') && importLike) {
+    //   const path = Path.join('/node_modules/', args.path.replace('devextreme', 'devextreme/esm') + '.js')
+    //   console.log('path', path);
+    //   return { path }
+    // }
+
+    const dirname = Path.dirname(args.importer)
+    // if (dirname.includes('devextreme') && args.path.includes('.')){
+    //   const path = Path.join(dirname, args.path + '.js')
+    //   console.log('path', path);
+    //   return { path }
+    // }
+
+
+    // if (args.kind === 'import-statement') {
+    //   console.log('dirname', dirname);
+    //   let path = Path.join(dirname, args.path)
+    //   if (!args.path.includes('App.jsx') && dirname === '/') {
+    //     if (args.path == 'react-dom/client') {
+    //       path = Path.join('/node_modules/react-dom', 'cjs/react-dom-client.production.js')
+    //     } else {
+    //       path = Path.join(dirname, 'node_modules', args.path)
+    //       if (args.path == 'react') {
+    //         path = Path.join(path, 'index.js')
+    //       }
+    //       if (args.path.includes('devextreme-react')) {
+    //         path = path.replace('devextreme-react', 'devextreme-react/esm') + '.js';
+    //       }
+    //     }
+    //   }
+    //   console.log('path', path);
+    //   return { path }
+    // }
+    if (args.kind === 'require-call') {
       console.log('dirname', dirname);
-      const path = Path.join(dirname, args.path)
+      let path = Path.join(dirname, args.path)
+      if (args.path.includes('react-dom')){
+        path = Path.join('/node_modules/react-dom', 'cjs/react-dom.production.js')
+      }
+      else if (dirname.includes('react-dom')){
+        path = Path.join('/node_modules', args.path)
+        if (args.path == 'react') {
+          path = Path.join(path, 'index.js')
+        }
+        if (args.path == 'scheduler') {
+          path = Path.join(path, 'index.js')
+        }
+      }
       console.log('path', path);
       return { path }
     }

@@ -80,20 +80,36 @@ export class Compiler {
       if (!response.ok) throw new Error(`Failed to fetch ${url}`);
       return await response.json();
     };
+
+    if (dirname.includes('devextreme') && args.path.includes('./')){
+      return {path: Path.join(dirname, args.path + '.js')}
+    }
+    if (args.path.includes('index.esm.js') && args.path.includes('dist')){
+      return {path: '/node_modules/inferno/dist/index.esm.js'}
+    }
     
     if (!args.path.includes('App.jsx') && !args.path.includes('main.jsx') && args.kind === 'import-statement') {
       const baseUrl = 'http://127.0.0.1:3146';
 
-      const existingPackageName = 'react-dom';
       let fileName = ''
       let packageName = args.path;
-      if (args.path.includes(existingPackageName)) {
+      const reactDom = 'react-dom';
+      if (args.path.includes(reactDom)) {
         fileName = args.path.split('/')[1];
-        packageName = existingPackageName;
+        packageName = reactDom;
       }
-      let packageUrl = `${baseUrl}/node_modules/${packageName}/package.json`;
+      const babel = '@babel/runtime';
+      if (args.path.includes(babel)) {
+        fileName = args.path.split(`${babel}/`)[1];
+        packageName = babel;
+      }
+      
+      const packageUrl = baseUrl + Path.join('/node_modules/', packageName,'/package.json');
+
       console.log('url', packageUrl)
-      console.log('fileName', fileName);
+      if (fileName){
+        console.log('fileName', fileName);
+      }
 
       try {
         const pkg = await fetchPackageJson(packageUrl);
@@ -102,10 +118,18 @@ export class Compiler {
 
         let entryPoint = pkg.exports?.import || pkg.module || pkg.main || 'index.js';
         if (fileName) {
-          console.log('sas', pkg.exports)
-          entryPoint = pkg.exports?.[`./${fileName}`]?.default;
+          if (pkg.exports) {
+            if (packageName === babel){
+              entryPoint = pkg.exports?.[`./${fileName}`];
+            }
+            else {
+              entryPoint = pkg.exports?.[`./${fileName}`]?.default;
+            }
+          }
         }
+        console.log ('pkgName', packageName)
         const fileUrl = Path.join('/node_modules/', packageName, entryPoint);
+        console.log('fileURL', fileUrl)
         
         return { path: fileUrl, namespace: 'http' };
       } catch (error) {

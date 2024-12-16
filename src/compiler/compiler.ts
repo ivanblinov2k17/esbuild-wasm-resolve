@@ -73,6 +73,8 @@ export class Compiler {
       return { path: '/' + args.path }
     }
 
+    const dirname = Path.dirname(args.importer)
+    
     const fetchPackageJson = async (url: string): Promise<any> => {
       const response = await fetch(url);
       if (!response.ok) throw new Error(`Failed to fetch ${url}`);
@@ -80,22 +82,40 @@ export class Compiler {
     };
     
     if (!args.path.includes('App.jsx') && !args.path.includes('main.jsx') && args.kind === 'import-statement') {
-      const baseUrl = 'http://127.0.0.1:3146/node_modules';
-      const pkgUrl = `${baseUrl}/${args.path}/package.json`;
-      console.log('asdasd', pkgUrl)
+      const baseUrl = 'http://127.0.0.1:3146';
+
+      const existingPackageName = 'react-dom';
+      let fileName = ''
+      let packageName = args.path;
+      if (args.path.includes(existingPackageName)) {
+        fileName = args.path.split('/')[1];
+        packageName = existingPackageName;
+      }
+      let packageUrl = `${baseUrl}/node_modules/${packageName}/package.json`;
+      console.log('url', packageUrl)
+      console.log('fileName', fileName);
 
       try {
-        const pkg = await fetchPackageJson(pkgUrl);
+        const pkg = await fetchPackageJson(packageUrl);
         
         // Determine the entry point
+
         let entryPoint = pkg.exports?.import || pkg.module || pkg.main || 'index.js';
-        const entryUrl = `${baseUrl}/${args.path}/${entryPoint}`;
+        if (fileName) {
+          console.log('sas', pkg.exports)
+          entryPoint = pkg.exports?.[`./${fileName}`]?.default;
+        }
+        const fileUrl = Path.join('/node_modules/', packageName, entryPoint);
         
-        return { path: entryUrl, namespace: 'http' };
+        return { path: fileUrl, namespace: 'http' };
       } catch (error) {
         console.error(`Error resolving ${args.path}:`, error);
+      }
     }
-  }
+
+    if (args.path.includes('App.jsx')) {
+      return {path: Path.join(dirname, args.path)}
+    }
     
     // const importLike = args.kind === 'import-statement' || args.kind === 'require-call';
 
@@ -117,7 +137,6 @@ export class Compiler {
     //   return { path }
     // }
 
-    const dirname = Path.dirname(args.importer)
     // if (dirname.includes('devextreme') && args.path.includes('.')){
     //   const path = Path.join(dirname, args.path + '.js')
     //   console.log('path', path);
